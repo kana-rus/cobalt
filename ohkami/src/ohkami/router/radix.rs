@@ -1,7 +1,6 @@
-use crate::request::Path;
-use crate::{Method, Request, Response};
+use super::PathParams;
 use crate::fang::{FangProcCaller, BoxedFPC};
-use ohkami_lib::Slice;
+use whttp::{Method, Request, Response};
 use std::fmt::Write as _;
 
 
@@ -66,40 +65,38 @@ impl RadixRouter {
         &self,
         req: &mut Request,
     ) -> Response {
-        (match req.method {
+        let mut params = PathParams::new();
+        (match req.method() {
+            Method::CONNECT => return Response::NotImplemented(),
+            Method::HEAD    => return self.GET.search(req.path(), &mut params).call_bite(req).await.into_head(),
             Method::GET     => &self.GET,
             Method::PUT     => &self.PUT,
             Method::POST    => &self.POST,
             Method::PATCH   => &self.PATCH,
             Method::DELETE  => &self.DELETE,
             Method::OPTIONS => &self.OPTIONS,
-            Method::HEAD => {
-                let mut res = self.GET.search(&mut req.path).call_bite(req).await;
-                {/* not `res.drop_content()` to leave `Content-Type`, `Content-Length` */
-                    res.content = crate::response::Content::None;
-                }
-                return res
-            }
-        }).search(&mut req.path).call_bite(req).await
+        }).search(req.path(), &mut params).call_bite(req).await////////////<-------------
     }
 }
 
 impl Node {
     #[inline]
-    pub(super/* for test */) fn search(&self,
-        path: &mut Path
-    ) -> &dyn FangProcCaller {
-        // SAFETY:
-        // 1. `req` must be alive while `search`
-        // 2. `Request` DOESN'T have method that mutates `bytes`,
-        //    So what `bytes` refers to is NEVER changed by any other process
-        //    while `search`
-        let mut bytes = unsafe {path.normalized_bytes()};
-
+    pub(super/* for test */) fn search<'router, 'req>(&'router self,
+        path: &'req str,
+        params: &mut PathParams<'req>
+    ) -> &'router dyn FangProcCaller {
         let mut target = self;
 
+        let mut path = path.as_bytes();
+        unsafe {// SAFETY: whttp::request::parse::path assumes path is not empty
+            let last = path.len() - 1;
+            if *path.get_unchecked(last) == b'/' {
+                path = path.get_unchecked(..last)
+            }
+        }
+
         #[cfg(feature="DEBUG")]
-        println!("[path] '{}'", bytes.escape_ascii());
+        println!("[path] '{}'", path.escape_ascii());
 
         loop {
             #[cfg(feature="DEBUG")]
@@ -108,31 +105,31 @@ impl Node {
             println!("[patterns] {:?}", target.patterns);
     
             for pattern in target.patterns {
-                if bytes.is_empty() || unsafe {bytes.get_unchecked(0)} != &b'/' {
+                if path.is_empty() || unsafe {path.get_unchecked(0)} != &b'/' {
                     // At least one `pattern` to match is remaining
-                    // but remaining `bytes` doesn't start with '/'
+                    // but remaining `path` doesn't start with '/'
                     return &target.__catch__
                 }
 
-                bytes = unsafe {bytes.get_unchecked(1..)};
+                path = unsafe {path.get_unchecked(1..)};
                 
                 #[cfg(feature="DEBUG")]
-                println!("[bytes striped prefix '/'] '{}'", bytes.escape_ascii());
+                println!("[bytes striped prefix '/'] '{}'", path.escape_ascii());
         
                 match pattern {
-                    Pattern::Static(s) => bytes = match bytes.strip_prefix(*s) {
+                    Pattern::Static(s) => path = match path.strip_prefix(*s) {
                         Some(remaining) => remaining,
                         None            => return &target.__catch__,
                     },
                     Pattern::Param => {
-                        let (param, remaining) = split_next_section(bytes);
-                        unsafe {path.push_param(Slice::from_bytes(param))}
-                        bytes = remaining;
+                        let (param, remaining) = split_next_section(path);
+                        params.push(param);
+                        path = remaining;
                     },
                 }
             }
 
-            if bytes.is_empty() {
+            if path.is_empty() {
                 #[cfg(feature="DEBUG")]
                 println!("Found: {target:?}");
         
@@ -141,7 +138,7 @@ impl Node {
                 #[cfg(feature="DEBUG")]
                 println!("not found, searching children: {:#?}", target.children);
         
-                target = match target.matchable_child(bytes) {
+                target = match target.matchable_child(path) {
                     Some(child) => child,
                     None        => return &target.__catch__,
                 }

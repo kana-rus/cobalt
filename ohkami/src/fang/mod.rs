@@ -2,6 +2,7 @@
 mod handler;
 #[cfg(feature="__rt__")]
 pub(crate) use handler::{Handler, IntoHandler};
+pub use handler::{FromParam, FromRequest, IntoResponse};
 
 mod middleware;
 pub use middleware::{Fangs, util::FangAction};
@@ -12,7 +13,7 @@ pub use builtin::*;
 mod dispatch;
 pub(self) use dispatch::*;
 
-use crate::{Request, Response};
+use whttp::{Request, Response};
 use std::{future::Future, pin::Pin, ops::Deref};
 
 

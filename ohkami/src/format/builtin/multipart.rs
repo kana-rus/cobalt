@@ -1,4 +1,4 @@
-use crate::{FromRequest, Request, Response};
+use crate::{FromRequest, Request, Response, header::ContentType};
 use serde::Deserialize;
 
 
@@ -11,10 +11,10 @@ impl<'req, S: Deserialize<'req>> FromRequest<'req> for Multipart<S> {
 
     #[inline]
     fn from_request(req: &'req Request) -> Option<Result<Self, Self::Error>> {
-        if req.headers.ContentType()? != "multipart/form-data" {
+        if req.header(ContentType)? != "multipart/form-data" {
             return None
         }
-        ohkami_lib::serde_multipart::from_bytes(req.payload()?)
+        ohkami_lib::serde_multipart::from_bytes(req.body()?)
             .map_err(super::reject)
             .map(Self).into()
     }

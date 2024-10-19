@@ -1,4 +1,4 @@
-use crate::{FromRequest, IntoResponse, Request, Response};
+use crate::{FromRequest, IntoResponse, Request, Response, header::ContentType};
 use serde::{Deserialize, Serialize};
 
 
@@ -9,10 +9,10 @@ impl<'req, S: Deserialize<'req>> FromRequest<'req> for URLEncoded<S> {
 
     #[inline]
     fn from_request(req: &'req Request) -> Option<Result<Self, Self::Error>> {
-        if req.headers.ContentType()? != "application/x-www-form-urlencoded" {
+        if req.header(ContentType)? != "application/x-www-form-urlencoded" {
             return None
         }
-        ohkami_lib::serde_urlencoded::from_bytes(req.payload()?)
+        ohkami_lib::serde_urlencoded::from_bytes(req.body()?)
             .map_err(super::reject)
             .map(Self).into()
     }

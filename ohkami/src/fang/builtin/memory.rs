@@ -37,7 +37,7 @@ FromRequest<'req> for Memory<'req, Data> {
 
     #[inline]
     fn from_request(req: &'req crate::Request) -> Option<Result<Self, Self::Error>> {
-        match req.memorized::<Data>().map(Memory) {
+        match req.memory::<Data>().map(Memory) {
             Some(d) => Some(Ok(d)),
             None => {
                 #[cfg(debug_assertions)] {

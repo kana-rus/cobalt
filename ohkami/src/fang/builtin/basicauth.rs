@@ -1,4 +1,5 @@
 use crate::prelude::*;
+use whttp::header::{WWWAuthenticate, Authorization};
 
 
 /// # Builtin fang for Basic Auth
@@ -62,15 +63,14 @@ where
 
 const _: () = {
     fn unauthorized() -> Response {
-        Response::Unauthorized().with_headers(|h|h
-            .WWWAuthenticate("Basic realm=\"Secure Area\"")
-        )
+        Response::Unauthorized()
+            .with(WWWAuthenticate, "Basic realm=\"Secure Area\"")
     }
 
     #[inline]
     fn basic_credential_of(req: &Request) -> Result<String, Response> {
-        let credential_base64 = req.headers
-            .Authorization().ok_or_else(unauthorized)?
+        let credential_base64 = req
+            .header(Authorization).ok_or_else(unauthorized)?
             .strip_prefix("Basic ").ok_or_else(unauthorized)?;
 
         let credential = String::from_utf8(

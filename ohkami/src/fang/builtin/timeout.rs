@@ -96,23 +96,23 @@ const _: () = {
 
 
     {
-        let req = TestRequest::GET("/greet");
+        let req = Request::GET("/greet");
         let res = t.oneshot(req).await;
         assert_eq!(res.status(), Status::NotFound);
     }
     {
-        let req = TestRequest::PUT("/greet/ohkami/1");
+        let req = Request::PUT("/greet/ohkami/1");
         let res = t.oneshot(req).await;
         assert_eq!(res.status(), Status::NotFound);
     }
     {
-        let req = TestRequest::GET("/greet/ohkami/1");
+        let req = Request::GET("/greet/ohkami/1");
         let res = t.oneshot(req).await;
         assert_eq!(res.status(), Status::OK);
         assert_eq!(res.text(),   Some("Hello, ohkami!"));
     }
     {
-        let req = TestRequest::GET("/greet/ohkami/3");
+        let req = Request::GET("/greet/ohkami/3");
         let res = t.oneshot(req).await;
         assert_eq!(res.status(), Status::InternalServerError);
         assert_eq!(res.text(),   Some("timeout"));

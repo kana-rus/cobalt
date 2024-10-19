@@ -209,11 +209,13 @@ impl TrieRouter {
             available_methods.push("OPTIONS");
 
             Box::pin(async move {
+                use whttp::{Method, Status, header::{AccessControlRequestMethod, AccessControlAllowMethods}};
+
                 #[cfg(debug_assertions)] {
-                    assert_eq!(req.method, crate::Method::OPTIONS);
+                    assert_eq!(req.method(), Method::OPTIONS);
                 }
 
-                match req.headers.AccessControlRequestMethod() {
+                match req.header(AccessControlRequestMethod) {
                     Some(method) => {
                         /*
                             Ohkami, by default, does nothing more than setting
@@ -222,12 +224,13 @@ impl TrieRouter {
                             whitch is the default for a valid preflight request,
                             by a successful one in its proc.
                         */
-                        (if available_methods.contains(&method) {
-                            crate::Response::NotImplemented()
+                        whttp::Response::of(if available_methods.contains(&method) {
+                            Status::NotImplemented
                         } else {
-                            crate::Response::BadRequest()
-                        }).with_headers(|h| h
-                            .AccessControlAllowMethods(available_methods.join(", "))
+                            Status::BadRequest
+                        }).with(
+                            AccessControlAllowMethods,
+                            available_methods.join(", ")
                         )
                     }
                     None => {

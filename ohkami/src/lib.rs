@@ -116,15 +116,12 @@ mod __rt__ {
 }
 
 
-mod request;
-pub use request::{Request, Method, FromRequest, FromParam};
+pub use ::whttp::{Request, Response, Status, Method, header};
+
 pub use ::ohkami_macros::FromRequest;
 
-mod response;
-pub use response::{Response, Status, IntoResponse};
-
 pub mod fang;
-pub use fang::{Fang, FangProc};
+pub use fang::{Fang, FangProc, FromParam, FromRequest, IntoResponse};
 
 pub mod format;
 
@@ -137,8 +134,6 @@ use session::Session;
 mod ohkami;
 #[cfg(feature="__rt__")]
 pub use ohkami::{Ohkami, Route};
-
-pub mod header;
 
 pub mod typed;
 
@@ -155,7 +150,8 @@ pub mod util;
 pub use ::ohkami_macros::{worker, bindings};
 
 pub mod prelude {
-    pub use crate::{Request, Response, IntoResponse, Method, Status};
+    pub use ::whttp::{Request, Response};
+
     pub use crate::util::FangAction;
     pub use crate::serde::{Serialize, Deserialize};
     pub use crate::format::{JSON, Query};
@@ -200,16 +196,6 @@ pub mod serde {
 #[doc(hidden)]
 pub mod __internal__ {
     pub use ::serde;
-
     pub use ohkami_macros::consume_struct;
-
     pub use crate::fang::Fangs;
-
-    /* for benchmarks */
-    #[cfg(feature="DEBUG")]
-    #[cfg(feature="__rt__")]
-    pub use crate::{
-        request::{RequestHeader, RequestHeaders},
-        response::{ResponseHeader, ResponseHeaders},
-    };
 }

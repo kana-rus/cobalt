@@ -3,7 +3,8 @@
 use std::{borrow::Cow, marker::PhantomData};
 use serde::{Serialize, Deserialize};
 use ohkami_lib::base64;
-use crate::{Fang, FangProc, IntoResponse, Request, Response};
+use crate::{Fang, FangProc, IntoResponse, Request, Response, Method};
+use crate::header::{Authorization};
 
 
 /// # Builtin fang and helper for JWT config
@@ -188,8 +189,7 @@ impl<Payload> JWT<Payload> {
 
 
     #[inline(always)] fn default_get(req: &Request) -> Option<&str> {
-        req.headers.Authorization()?
-            .strip_prefix("Bearer ")
+        req.header(Authorization)?.strip_prefix("Bearer ")
     }
 
     #[inline(always)] const fn alg_str(&self) -> &'static str {
@@ -285,7 +285,7 @@ impl<Payload: for<'de> Deserialize<'de>> JWT<Payload> {
     /// 
     /// Then it's valid, this returns decoded paylaod of the JWT as `Payload`.
     pub fn verified(&self, req: &Request) -> Result<Payload, Response> {
-        (! req.method.isOPTIONS()).then_some(()).ok_or_else(Response::OK)?;
+        (req.method() != Method::OPTIONS).then_some(()).ok_or_else(Response::OK)?;
 
         const UNAUTHORIZED_MESSAGE: &str = "missing or malformed jwt";
 
@@ -374,6 +374,7 @@ impl<Payload: for<'de> Deserialize<'de>> JWT<Payload> {
 #[cfg(test)] mod test {
     use super::{JWT, JWTToken};
     use crate::__rt__::test;
+    use crate::{Request, Status, header::Authorization};
 
     #[test] async fn test_jwt_issue() {
         /* NOTE: 
@@ -396,42 +397,33 @@ impl<Payload: for<'de> Deserialize<'de>> JWT<Payload> {
     }
 
     #[test] async fn test_jwt_verify() {
-        use crate::{Request, testing::TestRequest, Status};
-        use std::pin::Pin;
-
         let my_jwt = JWT::<::serde_json::Value>::default("ohkami-realworld-jwt-authorization-secret-key");
 
-        let req_bytes = TestRequest::GET("/")
-            .header("Authorization", "Bearer eyJ0eXAiOiJKV1QiLCJhbGciOiJIUzI1NiJ9.eyJpYXQiOjE3MDY4MTEwNzUsInVzZXJfaWQiOiI5ZmMwMDViMi1mODU4LTQzMzYtODkwYS1mMWEyYWVmNjBhMjQifQ.AKp-0zvKK4Hwa6qCgxskckD04Snf0gpSG7U1LOpcC_I")
-            .encode();
-        let mut req = Request::init(crate::util::IP_0000);
-        let mut req = unsafe {Pin::new_unchecked(&mut req)};
-        req.as_mut().read(&mut &req_bytes[..]).await.ok();
+        {
+            let req = Request::GET("/")
+                .with(Authorization, "Bearer eyJ0eXAiOiJKV1QiLCJhbGciOiJIUzI1NiJ9.eyJpYXQiOjE3MDY4MTEwNzUsInVzZXJfaWQiOiI5ZmMwMDViMi1mODU4LTQzMzYtODkwYS1mMWEyYWVmNjBhMjQifQ.AKp-0zvKK4Hwa6qCgxskckD04Snf0gpSG7U1LOpcC_I");
+            assert_eq!(
+                my_jwt.verified(&req).unwrap(),
+                ::serde_json::json!({ "iat": 1706811075, "user_id": "9fc005b2-f858-4336-890a-f1a2aef60a24" })
+            );
+        }
 
-        assert_eq!(
-            my_jwt.verified(&req.as_ref()).unwrap(),
-            ::serde_json::json!({ "iat": 1706811075, "user_id": "9fc005b2-f858-4336-890a-f1a2aef60a24" })
-        );
-
-        let req_bytes = TestRequest::GET("/")
-            // Modifed last `I` of the value above to `X`
-            .header("Authorization", "Bearer eyJ0eXAiOiJKV1QiLCJhbGciOiJIUzI1NiJ9.eyJpYXQiOjE3MDY4MTEwNzUsInVzZXJfaWQiOiI5ZmMwMDViMi1mODU4LTQzMzYtODkwYS1mMWEyYWVmNjBhMjQifQ.AKp-0zvKK4Hwa6qCgxskckD04Snf0gpSG7U1LOpcC_X")
-            .encode();
-        let mut req = Request::init(crate::util::IP_0000);
-        let mut req = unsafe {Pin::new_unchecked(&mut req)};
-        req.as_mut().read(&mut &req_bytes[..]).await.ok();
-
-        assert_eq!(
-            my_jwt.verified(&req.as_ref()).unwrap_err().status,
-            Status::Unauthorized
-        );
+        {
+            let req = Request::GET("/")
+                // just modifed last `I` of the value above to `X`
+                .with(Authorization, "Bearer eyJ0eXAiOiJKV1QiLCJhbGciOiJIUzI1NiJ9.eyJpYXQiOjE3MDY4MTEwNzUsInVzZXJfaWQiOiI5ZmMwMDViMi1mODU4LTQzMzYtODkwYS1mMWEyYWVmNjBhMjQifQ.AKp-0zvKK4Hwa6qCgxskckD04Snf0gpSG7U1LOpcC_X");
+            assert_eq!(
+                my_jwt.verified(&req).unwrap_err().status(),
+                Status::Unauthorized
+            );
+        }
     }
 
     #[test] async fn test_jwt_verify_senario() {
         use crate::prelude::*;
         use crate::testing::*;
+        use crate::IntoResponse;
         use std::{sync::OnceLock, sync::Mutex, collections::HashMap, borrow::Cow};
-
 
         fn my_jwt() -> JWT<MyJWTPayload> {
             JWT::default("myverysecretjwtsecretkey")
@@ -555,18 +547,18 @@ impl<Payload: for<'de> Deserialize<'de>> JWT<Payload> {
         )).test();
         
 
-        let req = TestRequest::PUT("/signin");
+        let req = Request::PUT("/signin");
         let res = t.oneshot(req).await;
         assert_eq!(res.status(), Status::BadRequest);
 
-        let req = TestRequest::GET("/profile");
+        let req = Request::GET("/profile");
         let res = t.oneshot(req).await;
         assert_eq!(res.status(), Status::Unauthorized);
         assert_eq!(res.text(),   Some("missing or malformed jwt"));
 
 
-        let req = TestRequest::PUT("/signin")
-            .json(SigninRequest {
+        let req = Request::PUT("/signin")
+            .with_json(SigninRequest {
                 first_name:   "ohkami",
                 familly_name: "framework",
             });
@@ -574,22 +566,21 @@ impl<Payload: for<'de> Deserialize<'de>> JWT<Payload> {
         assert_eq!(res.status(), Status::OK);
         let jwt_1 = dbg!(res.text().unwrap());
 
-        let req = TestRequest::GET("/profile")
-            .header("Authorization", format!("Bearer {jwt_1}"));
+        let req = Request::GET("/profile")
+            .with(Authorization, format!("Bearer {jwt_1}"));
         let res = t.oneshot(req).await;
         assert_eq!(res.status(), Status::OK);
-        assert_eq!(res.json::<Profile>().unwrap().unwrap(), Profile {
+        assert_eq!(res.json::<Profile>().unwrap(), Profile {
             id:           1,
             first_name:   String::from("ohkami"),
             familly_name: String::from("framework"),
         });
 
-        let req = TestRequest::GET("/profile")
-            .header("Authorization", format!("Bearer {jwt_1}x"));
+        let req = Request::GET("/profile")
+            .with(Authorization, format!("Bearer {jwt_1}x"));
         let res = t.oneshot(req).await;
         assert_eq!(res.status(), Status::Unauthorized);
         assert_eq!(res.text(),   Some("missing or malformed jwt"));
-
 
         assert_eq! {
             &*repository().await.lock().unwrap(),
@@ -602,9 +593,8 @@ impl<Payload: for<'de> Deserialize<'de>> JWT<Payload> {
             ])
         }
 
-
-        let req = TestRequest::PUT("/signin")
-            .json(SigninRequest {
+        let req = Request::PUT("/signin")
+            .with_json(SigninRequest {
                 first_name:   "Leonhard",
                 familly_name: "Euler",
             });
@@ -612,11 +602,11 @@ impl<Payload: for<'de> Deserialize<'de>> JWT<Payload> {
         assert_eq!(res.status(), Status::OK);
         let jwt_2 = dbg!(res.text().unwrap());
 
-        let req = TestRequest::GET("/profile")
-            .header("Authorization", format!("Bearer {jwt_2}"));
+        let req = Request::GET("/profile")
+            .with(Authorization, format!("Bearer {jwt_2}"));
         let res = t.oneshot(req).await;
         assert_eq!(res.status(), Status::OK);
-        assert_eq!(res.json::<Profile>().unwrap().unwrap(), Profile {
+        assert_eq!(res.json::<Profile>().unwrap(), Profile {
             id:           2,
             first_name:   String::from("Leonhard"),
             familly_name: String::from("Euler"),
@@ -640,18 +630,18 @@ impl<Payload: for<'de> Deserialize<'de>> JWT<Payload> {
         }
 
 
-        let req = TestRequest::GET("/profile")
-            .header("Authorization", format!("Bearer {jwt_1}"));
+        let req = Request::GET("/profile")
+            .with(Authorization, format!("Bearer {jwt_1}"));
         let res = t.oneshot(req).await;
         assert_eq!(res.status(), Status::OK);
-        assert_eq!(res.json::<Profile>().unwrap().unwrap(), Profile {
+        assert_eq!(res.json::<Profile>().unwrap(), Profile {
             id:           1,
             first_name:   String::from("ohkami"),
             familly_name: String::from("framework"),
         });
 
-        let req = TestRequest::GET("/profile")
-            .header("Authorization", format!("Bearer {jwt_2}0000"));
+        let req = Request::GET("/profile")
+            .with(Authorization, format!("Bearer {jwt_2}0000"));
         let res = t.oneshot(req).await;
         assert_eq!(res.status(), Status::Unauthorized);
         assert_eq!(res.text(),   Some("missing or malformed jwt"));

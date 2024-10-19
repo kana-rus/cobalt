@@ -1,4 +1,4 @@
-use crate::{FromRequest, IntoResponse, Request, Response};
+use crate::{FromRequest, IntoResponse, Request, Response, header::ContentType};
 use serde::{Deserialize, Serialize};
 
 
@@ -9,10 +9,10 @@ impl<'req, S: Deserialize<'req>> FromRequest<'req> for JSON<S> {
 
     #[inline(always)]
     fn from_request(req: &'req Request) -> Option<Result<Self, Self::Error>> {
-        if req.headers.ContentType()? != "application/json" {
+        if req.header(ContentType)? != "application/json" {
             return None
         }
-        serde_json::from_slice(req.payload()?)
+        serde_json::from_slice(req.body()?)
             .map_err(super::reject)
             .map(Self).into()
     }

@@ -1,4 +1,4 @@
-use crate::{FromRequest, IntoResponse, Request, Response};
+use crate::{FromRequest, IntoResponse, Request, Response, header::ContentType};
 
 
 pub struct Text<T>(pub T);
@@ -6,10 +6,10 @@ pub struct Text<T>(pub T);
 impl<'req, T: From<&'req str>> FromRequest<'req> for Text<T> {
     type Error = Response;
     fn from_request(req: &'req Request) -> Option<Result<Self, Self::Error>> {
-        if !req.headers.ContentType()?.starts_with("text/plain") {
+        if !req.header(ContentType)?.starts_with("text/plain") {
             return None
         }
-        std::str::from_utf8(req.payload()?)
+        std::str::from_utf8(req.body()?)
             .map_err(super::reject)
             .map(|s| Self(T::from(s))).into()
     }

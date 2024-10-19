@@ -1,5 +1,5 @@
 use super::super::{Fang, FangProc};
-use crate::{Request, Response};
+use whttp::{Request, Response};
 
 
 /// # Fang action - utility wrapper of `Fang`

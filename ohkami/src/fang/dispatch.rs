@@ -1,6 +1,6 @@
-use crate::Response;
 use super::FangProcCaller;
 use std::future::Future;
+use whttp::Response;
 
 
 pub(super) use dispatch::*;

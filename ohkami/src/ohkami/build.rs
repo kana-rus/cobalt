@@ -2,7 +2,6 @@
 
 use super::router::{TrieRouter, RouteSections};
 use crate::fang::{Handler, IntoHandler};
-use crate::response::Content;
 use crate::Ohkami;
 
 
@@ -262,15 +261,8 @@ trait RoutingItem {
                             = Box::leak(Box::new(self));
 
                         Handler::new(|_| Box::pin(async {
-                            let mut res = crate::Response::OK();
-                            {
-                                res.headers.set().ContentType(this.mime);
-                                res.content = Content::Payload({
-                                    let content: &'static [u8] = &this.content;
-                                    content.into()
-                                });
-                            }
-                            res
+                            whttp::Response::OK()
+                                .with_payload(this.mime, &*this.content)
                         }))
                     }
                 }

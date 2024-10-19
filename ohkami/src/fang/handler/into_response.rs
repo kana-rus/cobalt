@@ -1,6 +1,6 @@
 #![allow(non_snake_case)]
 
-use crate::{Response, Status};
+use whttp::{Response, Status};
 
 
 /// A trait implemented by types that can be used as a return value of a handler.

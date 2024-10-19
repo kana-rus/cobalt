@@ -1,6 +1,7 @@
-use std::{future::Future, pin::Pin};
 use super::{Handler, SendOnNative, SendSyncOnNative, ResponseFuture};
-use crate::{Response, FromRequest, FromParam, Request, IntoResponse};
+use crate::{FromRequest, FromParam, IntoResponse};
+use std::{future::Future, pin::Pin};
+use whttp::{Request, Response};
 
 
 pub trait IntoHandler<T> {

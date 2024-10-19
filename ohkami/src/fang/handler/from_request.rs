@@ -1,5 +1,6 @@
+use crate::{util::ErrorMessage, IntoResponse};
 use std::borrow::Cow;
-use crate::{util::ErrorMessage, IntoResponse, Request, Response};
+use whttp::{Request, Response};
 
 
 /// "Retirieved from a `Request`".

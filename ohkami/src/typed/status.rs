@@ -1,5 +1,6 @@
+use crate::{IntoResponse, Response};
+use whttp::Status;
 use std::borrow::Cow;
-use crate::{IntoResponse, Response, Status};
 
 
 macro_rules! generate_statuses_as_types_containing_value {
@@ -18,7 +19,7 @@ macro_rules! generate_statuses_as_types_containing_value {
                 #[inline]
                 fn into_response(self) -> Response {
                     let mut res = self.0.into_response();
-                    res.status = Status::$status;
+                    res.set_status(Status::$status);
                     res
                 }
             }
@@ -126,10 +127,8 @@ macro_rules! generate_redirects {
             impl IntoResponse for $status {
                 #[inline]
                 fn into_response(self) -> Response {
-                    let mut res = Response::of(Status::$status);
-                    res.headers.set()
-                        .Location(self.location);
-                    res
+                    Response::$status()
+                        .with(whttp::header::Location, self.location)
                 }
             }
         )*
