@@ -13,12 +13,10 @@ pub trait IntoHandler<T> {
 }
 
 /* FIXME: omit unsafe... */
-#[inline(always)] fn from_request<'fr, 'req, R: FromRequest<'fr>>(
+#[inline(always)] fn from_request<'req, R: FromRequest<'req>>(
     req: &'req Request
 ) -> Result<R, Response> {
-    <R as FromRequest>::from_request(unsafe {
-        std::mem::transmute::<&'req _, &'fr _>(req)
-    })
+    <R as FromRequest>::from_request(req)
         .ok_or_else(|| Response::BadRequest().with_text("missing something expected in request"))?
         .map_err(IntoResponse::into_response)
 }
