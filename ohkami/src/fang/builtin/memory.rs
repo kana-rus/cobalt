@@ -84,9 +84,9 @@ const _: () = {
     FangProc for UseMemoryProc<Data, Inner> {
         #[cfg(not(feature="rt_worker"))]
         #[inline]
-        fn bite<'b>(&'b self, req: &'b mut crate::Request) -> impl std::future::Future<Output = crate::Response> + Send {
+        fn bite<'b>(&'b self, ctx: crate::Context<'b>, req: &'b mut crate::Request) -> impl std::future::Future<Output = crate::Response> + Send {
             req.memorize(self.data.clone());
-            self.inner.bite(req)
+            self.inner.bite(ctx, req)
         }
         #[cfg(feature="rt_worker")]
         #[inline]

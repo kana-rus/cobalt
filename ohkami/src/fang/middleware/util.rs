@@ -94,12 +94,12 @@ pub trait FangAction: Clone + Send + Sync + 'static {
     }
     impl<A: FangAction, I: FangProc> FangProc for FangActionProc<A, I> {
         #[inline(always)]
-        async fn bite<'b>(&'b self, req: &'b mut Request) -> Response {
+        async fn bite<'b>(&'b self, ctx: super::super::Context<'b>, req: &'b mut Request) -> Response {
             let Self { action, inner } = self;
             match action.fore(req).await {
                 Err(e) => e,
                 Ok(()) => {
-                    let mut res = inner.bite(req).await;
+                    let mut res = inner.bite(ctx, req).await;
                     action.back(&mut res).await;
                     res
                 }
@@ -141,11 +141,11 @@ mod test {
                 inner: I
             }
             impl<I: FangProc> FangProc for GreetingFangProc<I> {
-                async fn bite<'b>(&'b self, req: &'b mut Request) -> Response {
+                async fn bite<'b>(&'b self, ctx: crate::Context<'b>, req: &'b mut Request) -> Response {
                     {
                         messages().lock().unwrap().push(format!("Hello, {}!", self.fang.name));
                     }
-                    let res = self.inner.bite(req).await;
+                    let res = self.inner.bite(ctx, req).await;
                     {
                         messages().lock().unwrap().push(format!("Bye, {}!", self.fang.name));
                     }
@@ -174,7 +174,7 @@ mod test {
         )).test();
 
         {
-            let req = TestRequest::POST("/greet");
+            let req = Request::POST("/greet");
             let res = t.oneshot(req).await;
 
             assert_eq!(res.status(), Status::OK);

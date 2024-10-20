@@ -1,5 +1,5 @@
 use super::PathParams;
-use crate::fang::{FangProcCaller, BoxedFPC};
+use crate::fang::{FangProcCaller, BoxedFPC, Context};
 use whttp::{Method, Request, Response};
 use std::fmt::Write as _;
 
@@ -63,19 +63,32 @@ impl RadixRouter {
     #[inline(always)]
     pub(crate) async fn handle(
         &self,
+        ip:  std::net::IpAddr,
         req: &mut Request,
     ) -> Response {
+        let path = unsafe {// と思ったけど req.set_path あるやん...
+            let path = req.path();
+            std::str::from_raw_parts(path.as_ptr(), path.len())
+        };
+
         let mut params = PathParams::new();
-        (match req.method() {
+
+        let fpc = (match req.method() {
             Method::CONNECT => return Response::NotImplemented(),
-            Method::HEAD    => return self.GET.search(req.path(), &mut params).call_bite(req).await.into_head(),
+            Method::HEAD    => return {
+                let fpc = self.GET.search(req.path(), &mut params);
+                let ctx = Context::new(ip, params);
+                fpc.call_bite(ctx, req).await.into_head()
+            },
             Method::GET     => &self.GET,
             Method::PUT     => &self.PUT,
             Method::POST    => &self.POST,
             Method::PATCH   => &self.PATCH,
             Method::DELETE  => &self.DELETE,
             Method::OPTIONS => &self.OPTIONS,
-        }).search(req.path(), &mut params).call_bite(req).await////////////<-------------
+        }).search(req.path(), &mut params);
+        let ctx = Context::new(ip, params);
+        fpc.call_bite(ctx, req).await
     }
 }
 

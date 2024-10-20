@@ -117,7 +117,7 @@ const _: () = {
 
 pub(crate) struct PathParams<'req> {
     list: [MaybeUninit<&'req [u8]>; PARAMS_LIMIT],
-    next: u8,
+    next: usize,
 }
 
 const PARAMS_LIMIT: usize = 2;
@@ -131,30 +131,39 @@ const _: () = {
             }
         }
 
+        #[inline]
         pub(crate) fn push(&mut self, param: &'req [u8]) {
-            let next = self.next as usize;
-            if next == PARAMS_LIMIT {
+            if self.next == PARAMS_LIMIT {
                 #[cfg(debug_assertions)] {
                     crate::warning!("throwing away a path param `{}`: Ohkami doesn't handle more than two path params currently", param.escape_ascii())
                 }
                 return
             }
-            // SAFETY: next < PARAMS_LIMIT = self.list.len()
-            unsafe {self.list.get_unchecked_mut(next)}.write(param);
+            // SAFETY: self.next < PARAMS_LIMIT = self.list.len()
+            unsafe {self.list.get_unchecked_mut(self.next)}.write(param);
             self.next += 1;
         }
 
+        #[inline]
         // SAFETY: `self` must have called `push` at least once
         pub(crate) unsafe fn assume_init_one(self) -> &'req [u8] {
             self.list.get_unchecked(0).assume_init_ref()
         }
 
+        #[inline]
         // SAFETY: `self` must have called `push` twice
         pub(crate) unsafe fn assume_init_two(self) -> (&'req [u8], &'req [u8]) {
             (
                 self.list.get_unchecked(0).assume_init_ref(),
                 self.list.get_unchecked(1).assume_init_ref()
             )
+        }
+
+        pub(crate) fn iter(&self) -> impl Iterator<Item = std::borrow::Cow<str>> {
+            self.list[..self.next].iter()
+                .map(|mu| ohkami_lib::percent_decode_utf8(
+                    unsafe {mu.assume_init_ref()}
+                ).expect("path parameters unexpectedly "))
         }
     }
 };

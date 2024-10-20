@@ -4,13 +4,12 @@
 mod _test;
 
 pub(crate) mod build;
-pub(crate) mod router;
 
 pub use build::{Route, Routes};
 
+use crate::router::TrieRouter;
 use crate::fang::Fangs;
 use std::sync::Arc;
-use router::TrieRouter;
 
 #[cfg(feature="__rt_native__")]
 use {crate::{__rt__, Session}, ohkami_lib::signal};

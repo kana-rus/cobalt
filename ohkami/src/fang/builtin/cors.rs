@@ -1,6 +1,6 @@
 #![allow(non_snake_case)]
 
-use crate::{Fang, FangProc, Request, Response, Status, Method};
+use crate::{Fang, FangProc, Context, Request, Response, Status, Method};
 use crate::header::{
     Vary,
     ContentType,
@@ -138,8 +138,8 @@ pub struct CORSProc<Inner: FangProc> {
 }
 /* Based on https://github.com/honojs/hono/blob/main/src/middleware/cors/index.ts; MIT */
 impl<Inner: FangProc> FangProc for CORSProc<Inner> {
-    async fn bite<'b>(&'b self, req: &'b mut Request) -> Response {
-        let mut res = self.inner.bite(req).await;
+    async fn bite<'b>(&'b self, ctx: Context<'b>, req: &'b mut Request) -> Response {
+        let mut res = self.inner.bite(ctx, req).await;
 
         res.set(AccessControlAllowOrigin, self.cors.AllowOrigin.as_str());
         if self.cors.AllowOrigin.is_any() {

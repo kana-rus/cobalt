@@ -53,7 +53,7 @@ impl Timeout {
 }
 
 const _: () = {
-    use crate::{Fang, FangProc, Request, Response};
+    use crate::{Fang, FangProc, Context, Request, Response};
 
     impl<Inner: FangProc> Fang<Inner> for Timeout {
         type Proc = TimeoutProc<Inner>;
@@ -67,8 +67,8 @@ const _: () = {
         time:  Duration,
     }
     impl<Inner: FangProc> FangProc for TimeoutProc<Inner> {
-        async fn bite<'b>(&'b self, req: &'b mut Request) -> Response {
-            crate::util::timeout_in(self.time, self.inner.bite(req)).await
+        async fn bite<'b>(&'b self, ctx: Context<'b>, req: &'b mut Request) -> Response {
+            crate::util::timeout_in(self.time, self.inner.bite(ctx, req)).await
                 .unwrap_or_else(|| Response::InternalServerError().with_text("timeout"))
         }
     }

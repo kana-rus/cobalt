@@ -3,7 +3,7 @@
 use std::{borrow::Cow, marker::PhantomData};
 use serde::{Serialize, Deserialize};
 use ohkami_lib::base64;
-use crate::{Fang, FangProc, IntoResponse, Request, Response, Method};
+use crate::{Fang, FangProc, Context, IntoResponse, Request, Response, Method};
 use crate::header::{Authorization};
 
 
@@ -129,14 +129,14 @@ const _: () = {
         Inner: FangProc + Sync,
         Payload: Serialize + for<'de> Deserialize<'de> + Send + Sync + 'static,
     > FangProc for JWTProc<Inner, Payload> {
-        async fn bite<'b>(&'b self, req: &'b mut Request) -> Response {
+        async fn bite<'b>(&'b self, ctx: Context<'b>, req: &'b mut Request) -> Response {
             let jwt_payload = match self.jwt.verified(req) {
                 Ok(payload) => payload,
                 Err(errres) => return errres
             };
             req.memorize(jwt_payload);
 
-            self.inner.bite(req).await.into_response()
+            self.inner.bite(ctx, req).await.into_response()
         }
     }
 };

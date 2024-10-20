@@ -121,7 +121,7 @@ pub use ::whttp::{Request, Response, Status, Method, header};
 pub use ::ohkami_macros::FromRequest;
 
 pub mod fang;
-pub use fang::{Fang, FangProc, FromParam, FromRequest, IntoResponse};
+pub use fang::{Fang, FangProc, Context, FromParam, FromRequest, IntoResponse};
 
 pub mod format;
 
@@ -134,6 +134,9 @@ use session::Session;
 mod ohkami;
 #[cfg(feature="__rt__")]
 pub use ohkami::{Ohkami, Route};
+
+#[cfg(feature="__rt__")]
+mod router;
 
 pub mod typed;
 
@@ -155,7 +158,7 @@ pub mod prelude {
     pub use crate::util::FangAction;
     pub use crate::serde::{Serialize, Deserialize};
     pub use crate::format::{JSON, Query};
-    pub use crate::fang::Memory;
+    pub use crate::fang::{Context, Memory};
 
     #[cfg(feature="__rt__")]
     pub use crate::{Route, Ohkami};

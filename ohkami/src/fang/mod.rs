@@ -10,11 +10,12 @@ pub use middleware::{Fangs, util::FangAction};
 mod builtin;
 pub use builtin::*;
 
-mod dispatch;
-pub(self) use dispatch::*;
+mod bound;
+pub(self) use bound::*;
 
-use whttp::{Request, Response};
+use crate::router::PathParams;
 use std::{future::Future, pin::Pin, ops::Deref};
+use whttp::{Request, Response};
 
 
 /// # Core trait for Ohkami's Fang system
@@ -62,45 +63,62 @@ pub trait Fang<Inner: FangProc> {
 
 pub trait FangProc: SendSyncOnNative + 'static {
     #[cfg(not(feature="rt_worker"))]
-    fn bite<'b>(&'b self, req: &'b mut Request) -> impl std::future::Future<Output = Response> + Send;
+    fn bite<'b>(&'b self, ctx: Context<'b>, req: &'b mut Request) -> impl std::future::Future<Output = Response> + Send;
     #[cfg(feature="rt_worker")]
-    fn bite<'b>(&'b self, req: &'b mut Request) -> impl std::future::Future<Output = Response>;
+    fn bite<'b>(&'b self, ctx: Context<'b>, req: &'b mut Request) -> impl std::future::Future<Output = Response>;
 
     #[cfg(not(feature="rt_worker"))]
     /// Default: just `Box::pin(self.bite(req))`.
     /// 
     /// Mainly used for override `bite` when itself returns `Pin<Box<dyn Future>>`.
     #[inline(always)]
-    fn bite_boxed<'b>(&'b self, req: &'b mut Request) -> Pin<Box<dyn Future<Output = Response> + Send + 'b>> {
-        Box::pin(self.bite(req))
+    fn bite_boxed<'b>(&'b self, ctx: Context<'b>, req: &'b mut Request) -> Pin<Box<dyn Future<Output = Response> + Send + 'b>> {
+        Box::pin(self.bite(ctx, req))
     }
     #[cfg(feature="rt_worker")]
     /// Default: just `Box::pin(self.bite(req))`.
     /// 
     /// Mainly used for override `bite` when itself returns `Pin<Box<dyn Future>>`.
     #[inline(always)]
-    fn bite_boxed<'b>(&'b self, req: &'b mut Request) -> Pin<Box<dyn Future<Output = Response> + 'b>> {
-        Box::pin(self.bite(req))
+    fn bite_boxed<'b>(&'b self, ctx: Context<'b>, req: &'b mut Request) -> Pin<Box<dyn Future<Output = Response> + 'b>> {
+        Box::pin(self.bite(ctx, req))
+    }
+}
+
+pub struct Context<'req> {
+    ip:     std::net::IpAddr,
+    params: PathParams<'req>,
+}
+impl<'req> Context<'req> {
+    pub(crate) const fn new(ip: std::net::IpAddr, params: PathParams<'req>) -> Self {
+        Self { ip, params }
+    }
+
+    pub const fn ip(&self) -> &std::net::IpAddr {
+        &self.ip
+    }
+    pub fn params(&self) -> impl Iterator<Item = std::borrow::Cow<str>> {
+        self.params.iter()
     }
 }
 
 /// `FangProc` but object-safe, returning `Pin<Box<dyn Future>>`.
 pub(crate) trait FangProcCaller {
     #[cfg(not(feature="rt_worker"))]
-    fn call_bite<'b>(&'b self, req: &'b mut Request) -> Pin<Box<dyn Future<Output = Response> + Send + 'b>>;
+    fn call_bite<'b>(&'b self, ctx: Context<'b>, req: &'b mut Request) -> Pin<Box<dyn Future<Output = Response> + Send + 'b>>;
     #[cfg(feature="rt_worker")]
-    fn call_bite<'b>(&'b self, req: &'b mut Request) -> Pin<Box<dyn Future<Output = Response> + 'b>>;
+    fn call_bite<'b>(&'b self, ctx: Context<'b>, req: &'b mut Request) -> Pin<Box<dyn Future<Output = Response> + 'b>>;
 }
 impl<Proc: FangProc> FangProcCaller for Proc {
     #[cfg(not(feature="rt_worker"))]
     #[inline(always)]
-    fn call_bite<'b>(&'b self, req: &'b mut Request) -> Pin<Box<dyn Future<Output = Response> + Send + 'b>> {
-        self.bite_boxed(req)
+    fn call_bite<'b>(&'b self, ctx: Context<'b>, req: &'b mut Request) -> Pin<Box<dyn Future<Output = Response> + Send + 'b>> {
+        self.bite_boxed(ctx, req)
     }
     #[cfg(feature="rt_worker")]
     #[inline(always)]
-    fn call_bite<'b>(&'b self, req: &'b mut Request) -> Pin<Box<dyn Future<Output = Response> + 'b>> {
-        self.bite_boxed(req)
+    fn call_bite<'b>(&'b self, ctx: Context<'b>, req: &'b mut Request) -> Pin<Box<dyn Future<Output = Response> + 'b>> {
+        self.bite_boxed(ctx, req)
     }
 }
 
@@ -132,24 +150,24 @@ const _: () = {
     impl FangProc for BoxedFPC {
         #[cfg(not(feature="rt_worker"))]
         #[inline(always)]
-        fn bite<'b>(&'b self, req: &'b mut Request) -> impl Future<Output = Response> + Send {
-            self.0.call_bite(req)
+        fn bite<'b>(&'b self, ctx: Context<'b>, req: &'b mut Request) -> impl Future<Output = Response> + Send {
+            self.0.call_bite(ctx, req)
         }
         #[cfg(feature="rt_worker")]
         #[inline(always)]
-        fn bite<'b>(&'b self, req: &'b mut Request) -> impl Future<Output = Response> {
-            self.0.call_bite(req)
+        fn bite<'b>(&'b self, ctx: Context<'b>, req: &'b mut Request) -> impl Future<Output = Response> {
+            self.0.call_bite(ctx, req)
         }
 
         #[cfg(not(feature="rt_worker"))]
         #[inline]
-        fn bite_boxed<'b>(&'b self, req: &'b mut Request) -> Pin<Box<dyn Future<Output = Response> + Send + 'b>> {
-            self.0.call_bite(req)
+        fn bite_boxed<'b>(&'b self, ctx: Context<'b>, req: &'b mut Request) -> Pin<Box<dyn Future<Output = Response> + Send + 'b>> {
+            self.0.call_bite(ctx, req)
         }
         #[cfg(feature="rt_worker")]
         #[inline]
-        fn bite_boxed<'b>(&'b self, req: &'b mut Request) -> Pin<Box<dyn Future<Output = Response> + 'b>> {
-            self.0.call_bite(req)
+        fn bite_boxed<'b>(&'b self, ctx: Context<'b>, req: &'b mut Request) -> Pin<Box<dyn Future<Output = Response> + 'b>> {
+            self.0.call_bite(ctx, req)
         }
     }
 };

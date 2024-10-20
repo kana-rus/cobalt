@@ -1,6 +1,6 @@
 #![allow(non_snake_case, unused_mut)]
 
-use super::router::{TrieRouter, RouteSections};
+use crate::router::{TrieRouter, RouteSections};
 use crate::fang::{Handler, IntoHandler};
 use crate::Ohkami;
 
