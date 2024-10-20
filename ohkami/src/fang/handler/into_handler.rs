@@ -51,6 +51,8 @@ const _: (/* FromParam */) = {
     {
         fn into_handler(self) -> Handler {
             Handler::new(move |ctx, _|
+                // SAFETY: due to the architecture of the router, it's obvious that
+                // `ctx` has one path param at this point
                 match P1::from_raw_param(unsafe {ctx.raw_params().assume_init_one()}) {
                     Ok(p1) => {
                         let res = self(p1);
@@ -69,10 +71,10 @@ const _: (/* FromParam */) = {
         Fut:  Future<Output = Body> + SendOnNative + 'static,
     {
         fn into_handler(self) -> Handler {
-            Handler::new(move |req|
-                // SAFETY: Due to the architecture of `Router`,
-                // `params` has already `append`ed once before this code
-                match P1::from_raw_param(unsafe {req.path.assume_one_param()}) {
+            Handler::new(move |ctx, _|
+                // SAFETY: due to the architecture of the router, it's obvious that
+                // `ctx` has one path param at this point
+                match P1::from_raw_param(unsafe {ctx.raw_params().assume_init_one()}) {
                     Ok(p1) => {
                         let res = self((p1,));
                         Box::pin(async move {res.await.into_response()})
@@ -89,8 +91,10 @@ const _: (/* FromParam */) = {
         Fut: Future<Output = Body> + SendOnNative + 'static,
     {
         fn into_handler(self) -> Handler {
-            Handler::new(move |req| {
-                let (p1, p2) = unsafe {req.path.assume_two_params()};
+            Handler::new(move |ctx, _| {
+                // SAFETY: due to the architecture of the router, it's obvious that
+                // `ctx` has two path params at this point
+                let (p1, p2) = unsafe {ctx.raw_params().assume_init_two()};
                 match (P1::from_raw_param(p1), P2::from_raw_param(p2)) {
                     (Ok(p1), Ok(p2)) => {
                         let res = self((p1, p2));
@@ -110,7 +114,7 @@ const _: (/* FromRequest items */) = {
         Fut: Future<Output = Body> + SendOnNative + 'static,
     {
         fn into_handler(self) -> Handler {
-            Handler::new(move |req|
+            Handler::new(move |_, req|
                 match from_request::<Item1>(req) {
                     Ok(item1) => {
                         let res = self(item1);
@@ -128,7 +132,7 @@ const _: (/* FromRequest items */) = {
         Fut: Future<Output = Body> + SendOnNative + 'static,
     {
         fn into_handler(self) -> Handler {
-            Handler::new(move |req|
+            Handler::new(move |_, req|
                 match (from_request::<Item1>(req), from_request::<Item2>(req)) {
                     (Ok(item1), Ok(item2)) => {
                         let res = self(item1, item2);
@@ -147,7 +151,7 @@ const _: (/* FromRequest items */) = {
         Fut: Future<Output = Body> + SendOnNative + 'static,
     {
         fn into_handler(self) -> Handler {
-            Handler::new(move |req|
+            Handler::new(move |_, req|
                 match (from_request::<Item1>(req), from_request::<Item2>(req), from_request::<Item3>(req)) {
                     (Ok(item1), Ok(item2), Ok(item3)) => {
                         let res = self(item1, item2, item3);
@@ -167,7 +171,7 @@ const _: (/* FromRequest items */) = {
         Fut: Future<Output = Body> + SendOnNative + 'static,
     {
         fn into_handler(self) -> Handler {
-            Handler::new(move |req|
+            Handler::new(move |_, req|
                 match (from_request::<Item1>(req), from_request::<Item2>(req), from_request::<Item3>(req), from_request::<Item4>(req)) {
                     (Ok(item1), Ok(item2), Ok(item3), Ok(item4)) => {
                         let res = self(item1, item2, item3, item4);
@@ -190,10 +194,10 @@ const _: (/* one FromParam without tuple and FromRequest items */) = {
         Fut: Future<Output = Body> + SendOnNative + 'static,
     {
         fn into_handler(self) -> Handler {
-            Handler::new(move |req| {
-                // SAFETY: Due to the architecture of `Router`,
-                // `params` has already `append`ed once before this code
-                let p1 = unsafe {req.path.assume_one_param()};
+            Handler::new(move |ctx, req| {
+                // SAFETY: due to the architecture of the router, it's obvious that
+                // `ctx` has one path param at this point
+                let p1 = unsafe {ctx.raw_params().assume_init_one()};
 
                 match (P1::from_raw_param(p1), from_request(req)) {
                     (Ok(p1), Ok(item1)) => {
@@ -213,10 +217,10 @@ const _: (/* one FromParam without tuple and FromRequest items */) = {
         Fut: Future<Output = Body> + SendOnNative + 'static,
     {
         fn into_handler(self) -> Handler {
-            Handler::new(move |req| {
-                // SAFETY: Due to the architecture of `Router`,
-                // `params` has already `append`ed once before this code
-                let p1 = unsafe {req.path.assume_one_param()};
+            Handler::new(move |ctx, req| {
+                // SAFETY: due to the architecture of the router, it's obvious that
+                // `ctx` has one path param at this point
+                let p1 = unsafe {ctx.raw_params().assume_init_one()};
 
                 match (P1::from_raw_param(p1), from_request::<Item1>(req), from_request::<Item2>(req)) {
                     (Ok(p1), Ok(item1), Ok(item2)) => {
@@ -237,10 +241,10 @@ const _: (/* one FromParam without tuple and FromRequest items */) = {
         Fut: Future<Output = Body> + SendOnNative + 'static,
     {
         fn into_handler(self) -> Handler {
-            Handler::new(move |req| {
-                // SAFETY: Due to the architecture of `Router`,
-                // `params` has already `append`ed once before this code
-                let p1 = unsafe {req.path.assume_one_param()};
+            Handler::new(move |ctx, req| {
+                // SAFETY: due to the architecture of the router, it's obvious that
+                // `ctx` has one path param at this point
+                let p1 = unsafe {ctx.raw_params().assume_init_one()};
 
                 match (P1::from_raw_param(p1), from_request::<Item1>(req), from_request::<Item2>(req), from_request::<Item3>(req)) {
                     (Ok(p1), Ok(item1), Ok(item2), Ok(item3)) => {
@@ -262,10 +266,10 @@ const _: (/* one FromParam without tuple and FromRequest items */) = {
         Fut: Future<Output = Body> + SendOnNative + 'static,
     {
         fn into_handler(self) -> Handler {
-            Handler::new(move |req| {
-                // SAFETY: Due to the architecture of `Router`,
-                // `params` has already `append`ed once before this code
-                let p1 = unsafe {req.path.assume_one_param()};
+            Handler::new(move |ctx, req| {
+                // SAFETY: due to the architecture of the router, it's obvious that
+                // `ctx` has one path param at this point
+                let p1 = unsafe {ctx.raw_params().assume_init_one()};
 
                 match (P1::from_raw_param(p1), from_request::<Item1>(req), from_request::<Item2>(req), from_request::<Item3>(req), from_request::<Item4>(req)) {
                     (Ok(p1), Ok(item1), Ok(item2), Ok(item3), Ok(item4)) => {
@@ -290,10 +294,10 @@ const _: (/* one FromParam and FromRequest items */) = {
         Fut: Future<Output = Body> + SendOnNative + 'static,
     {
         fn into_handler(self) -> Handler {
-            Handler::new(move |req| {
-                // SAFETY: Due to the architecture of `Router`,
-                // `params` has already `append`ed once before this code
-                let p1 = unsafe {req.path.assume_one_param()};
+            Handler::new(move |ctx, req| {
+                // SAFETY: due to the architecture of the router, it's obvious that
+                // `ctx` has one path param at this point
+                let p1 = unsafe {ctx.raw_params().assume_init_one()};
 
                 match (P1::from_raw_param(p1), from_request::<Item1>(req)) {
                     (Ok(p1), Ok(item1)) => {
@@ -313,10 +317,10 @@ const _: (/* one FromParam and FromRequest items */) = {
         Fut: Future<Output = Body> + SendOnNative + 'static,
     {
         fn into_handler(self) -> Handler {
-            Handler::new(move |req| {
-                // SAFETY: Due to the architecture of `Router`,
-                // `params` has already `append`ed once before this code
-                let p1 = unsafe {req.path.assume_one_param()};
+            Handler::new(move |ctx, req| {
+                // SAFETY: due to the architecture of the router, it's obvious that
+                // `ctx` has one path param at this point
+                let p1 = unsafe {ctx.raw_params().assume_init_one()};
 
                 match (P1::from_raw_param(p1), from_request::<Item1>(req), from_request::<Item2>(req)) {
                     (Ok(p1), Ok(item1), Ok(item2)) => {
@@ -337,10 +341,10 @@ const _: (/* one FromParam and FromRequest items */) = {
         Fut: Future<Output = Body> + SendOnNative + 'static,
     {
         fn into_handler(self) -> Handler {
-            Handler::new(move |req| {
-                // SAFETY: Due to the architecture of `Router`,
-                // `params` has already `append`ed once before this code
-                let p1 = unsafe {req.path.assume_one_param()};
+            Handler::new(move |ctx, req| {
+                // SAFETY: due to the architecture of the router, it's obvious that
+                // `ctx` has one path param at this point
+                let p1 = unsafe {ctx.raw_params().assume_init_one()};
                 
                 match (P1::from_raw_param(p1), from_request::<Item1>(req), from_request::<Item2>(req), from_request::<Item3>(req)) {
                     (Ok(p1), Ok(item1), Ok(item2), Ok(item3)) => {
@@ -362,10 +366,10 @@ const _: (/* one FromParam and FromRequest items */) = {
         Fut: Future<Output = Body> + SendOnNative + 'static,
     {
         fn into_handler(self) -> Handler {
-            Handler::new(move |req| {
-                // SAFETY: Due to the architecture of `Router`,
-                // `params` has already `append`ed once before this code
-                let p1 = unsafe {req.path.assume_one_param()};
+            Handler::new(move |ctx, req| {
+                // SAFETY: due to the architecture of the router, it's obvious that
+                // `ctx` has one path param at this point
+                let p1 = unsafe {ctx.raw_params().assume_init_one()};
                 
                 match (P1::from_raw_param(p1), from_request::<Item1>(req), from_request::<Item2>(req), from_request::<Item3>(req), from_request::<Item4>(req)) {
                     (Ok(p1), Ok(item1), Ok(item2), Ok(item3), Ok(item4)) => {
@@ -390,10 +394,10 @@ const _: (/* two PathParams and FromRequest items */) = {
         Fut: Future<Output = Body> + SendOnNative + 'static,
     {
         fn into_handler(self) -> Handler {
-            Handler::new(move |req| {
-                // SAFETY: Due to the architecture of `Router`,
-                // `params` has already `append`ed twice before this code
-                let (p1, p2) = unsafe {req.path.assume_two_params()};
+            Handler::new(move |ctx, req| {
+                // SAFETY: due to the architecture of the router, it's obvious that
+                // `ctx` has two path params at this point
+                let (p1, p2) = unsafe {ctx.raw_params().assume_init_two()};
 
                 match (FromParam::from_raw_param(p1), FromParam::from_raw_param(p2), from_request::<Item1>(req)) {
                     (Ok(p1), Ok(p2), Ok(item1)) => {
@@ -414,10 +418,10 @@ const _: (/* two PathParams and FromRequest items */) = {
         Fut: Future<Output = Body> + SendOnNative + 'static,
     {
         fn into_handler(self) -> Handler {
-            Handler::new(move |req| {
-                // SAFETY: Due to the architecture of `Router`,
-                // `params` has already `append`ed twice before this code
-                let (p1, p2) = unsafe {req.path.assume_two_params()};
+            Handler::new(move |ctx, req| {
+                // SAFETY: due to the architecture of the router, it's obvious that
+                // `ctx` has two path params at this point
+                let (p1, p2) = unsafe {ctx.raw_params().assume_init_two()};
 
                 match (FromParam::from_raw_param(p1), FromParam::from_raw_param(p2), from_request::<Item1>(req), from_request::<Item2>(req)) {
                     (Ok(p1), Ok(p2), Ok(item1), Ok(item2)) => {
@@ -439,10 +443,10 @@ const _: (/* two PathParams and FromRequest items */) = {
         Fut: Future<Output = Body> + SendOnNative + 'static,
     {
         fn into_handler(self) -> Handler {
-            Handler::new(move |req| {
-                // SAFETY: Due to the architecture of `Router`,
-                // `params` has already `append`ed twice before this code
-                let (p1, p2) = unsafe {req.path.assume_two_params()};
+            Handler::new(move |ctx, req| {
+                // SAFETY: due to the architecture of the router, it's obvious that
+                // `ctx` has two path params at this point
+                let (p1, p2) = unsafe {ctx.raw_params().assume_init_two()};
 
                 match (FromParam::from_raw_param(p1), FromParam::from_raw_param(p2), from_request::<Item1>(req), from_request::<Item2>(req), from_request::<Item3>(req)) {
                     (Ok(p1), Ok(p2), Ok(item1), Ok(item2), Ok(item3)) => {
@@ -465,10 +469,10 @@ const _: (/* two PathParams and FromRequest items */) = {
         Fut: Future<Output = Body> + SendOnNative + 'static,
     {
         fn into_handler(self) -> Handler {
-            Handler::new(move |req| {
-                // SAFETY: Due to the architecture of `Router`,
-                // `params` has already `append`ed twice before this code
-                let (p1, p2) = unsafe {req.path.assume_two_params()};
+            Handler::new(move |ctx, req| {
+                // SAFETY: due to the architecture of the router, it's obvious that
+                // `ctx` has two path params at this point
+                let (p1, p2) = unsafe {ctx.raw_params().assume_init_two()};
 
                 match (FromParam::from_raw_param(p1), FromParam::from_raw_param(p2), from_request::<Item1>(req), from_request::<Item2>(req), from_request::<Item3>(req), from_request::<Item4>(req)) {
                     (Ok(p1), Ok(p2), Ok(item1), Ok(item2), Ok(item3), Ok(item4)) => {

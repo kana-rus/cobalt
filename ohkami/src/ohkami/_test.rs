@@ -196,15 +196,15 @@ fn my_ohkami() -> Ohkami {
     )).test();
 
     let req = Request::GET("/a");
-    t.oneshot(req).await;
+    let _ = t.oneshot(req).await;
     assert_eq!(*N().lock().unwrap(), 1);
 
     let req = Request::GET("/a");
-    t.oneshot(req).await;
+    let _ = t.oneshot(req).await;
     assert_eq!(*N().lock().unwrap(), 2);
 
     let req = Request::GET("/a/b");
-    t.oneshot(req).await;
+    let _ = t.oneshot(req).await;
     assert_eq!(*N().lock().unwrap(), 3);
 
     
@@ -221,18 +221,18 @@ fn my_ohkami() -> Ohkami {
     )).test();
 
     let req = Request::GET("/a");
-    t.oneshot(req).await;
+    let _ = t.oneshot(req).await;
     assert_eq!(*N().lock().unwrap(), 1);
 
     let req = Request::GET("/a/b");
-    t.oneshot(req).await;
+    let _ = t.oneshot(req).await;
     assert_eq!(*N().lock().unwrap(), 2);
     let req = Request::GET("/a/b/c/d");
-    t.oneshot(req).await;
+    let _ = t.oneshot(req).await;
     assert_eq!(*N().lock().unwrap(), 3);
 
     let req = Request::GET("/a/b/c/d/e");
-    t.oneshot(req).await;
+    let _ = t.oneshot(req).await;
     assert_eq!(*N().lock().unwrap(), 4);
 }
 
