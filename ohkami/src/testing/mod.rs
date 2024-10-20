@@ -32,7 +32,7 @@ use whttp::{Request, Response};
 use whttp::header::ContentType;
 
 use crate::Ohkami;
-use crate::ohkami::router::RadixRouter;
+use crate::router::RadixRouter;
 
 use std::sync::Arc;
 
@@ -51,7 +51,7 @@ impl TestingOhkami {
     #[must_use]
     pub async fn oneshot(&self, mut req: Request) -> TestResponse {
         let router = self.0.clone();
-        TestResponse(router.handle(&mut req).await)
+        TestResponse(router.handle(crate::util::IP_0000, &mut req).await)
     }
 }
 

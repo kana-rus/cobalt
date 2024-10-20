@@ -9,7 +9,7 @@ impl<'req, S: Deserialize<'req>> FromRequest<'req> for Query<S> {
     type Error = Response;
 
     fn from_request(req: &'req crate::Request) -> Option<Result<Self, Self::Error>> {
-        serde_urlencoded::from_bytes(req.query_raw()?)
+        serde_urlencoded::from_bytes(req.query()?.as_bytes())
             .map_err(super::reject)
             .map(Query).into()
     }

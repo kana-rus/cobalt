@@ -32,20 +32,20 @@ const _: () = {
 
 impl Handler {
     pub(crate) fn new(
-        proc: impl Fn(&mut Request) -> Pin<Box<dyn ResponseFuture + '_>> + SendSyncOnNative + 'static
+        proc: impl for<'h>Fn(Context<'h>, &'h mut Request) -> Pin<Box<dyn ResponseFuture + 'h>> + SendSyncOnNative + 'static
     ) -> Self {
         struct HandlerProc<F>(F);
 
         const _: () = {
             impl<F> FangProcCaller for HandlerProc<F>
             where
-                F: Fn(&mut Request) -> Pin<Box<dyn ResponseFuture + '_>> + SendSyncOnNative + 'static
+                F: for<'h>Fn(Context<'h>, &'h mut Request) -> Pin<Box<dyn ResponseFuture + 'h>> + SendSyncOnNative + 'static
             {
                 #[cfg(not(feature="rt_worker"))]
-                fn call_bite<'b>(&'b self, _: Context<'b>, req: &'b mut Request) -> Pin<Box<dyn Future<Output = Response> + Send + 'b>> {
+                fn call_bite<'b>(&'b self, ctx: Context<'b>, req: &'b mut Request) -> Pin<Box<dyn Future<Output = Response> + Send + 'b>> {
                     // SAFETY: trait upcasting
                     // trait upcasting coercion is experimental <https://github.com/rust-lang/rust/issues/65991>
-                    unsafe {std::mem::transmute((self.0)(req))}
+                    unsafe {std::mem::transmute((self.0)(ctx, req))}
                 }
                 #[cfg(feature="rt_worker")]
                 fn call_bite<'b>(&'b self, _: Context<'b>, req: &'b mut Request) -> Pin<Box<dyn Future<Output = Response> + 'b>> {

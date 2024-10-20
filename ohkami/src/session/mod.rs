@@ -1,11 +1,19 @@
 #![cfg(feature="__rt_native__")]
 
-use std::{any::Any, pin::Pin, sync::Arc, time::Duration};
-use std::panic::{AssertUnwindSafe, catch_unwind};
+mod read;
+mod write;
+
+use self::read::read;
+use self::write::{write, Upgrade};
+
 use crate::__rt__::TcpStream;
 use crate::util::timeout_in;
 use crate::router::RadixRouter;
-use crate::{Request, Response};
+
+use std::{any::Any, pin::Pin, sync::Arc, time::Duration};
+use std::panic::{AssertUnwindSafe, catch_unwind};
+
+use whttp::{Response, request::parse, header::Connection};
 
 
 mod env {
@@ -65,28 +73,28 @@ impl Session {
         }
 
         match timeout_in(Duration::from_secs(env::OHKAMI_KEEPALIVE_TIMEOUT()), async {
-            let mut req = Request::init(self.ip);
-            let mut req = unsafe {Pin::new_unchecked(&mut req)};
+            let mut req = parse::new();
+            let mut req = Pin::new(&mut req);
             loop {
-                req.clear();
-                match req.as_mut().read(&mut self.connection).await {
+                parse::clear(&mut req);
+                match read(req.as_mut(), &mut self.connection).await {
                     Ok(Some(())) => {
-                        let close = matches!(req.headers.Connection(), Some("close" | "Close"));
+                        let close = matches!(req.header(Connection), Some("close" | "Close"));
 
                         let res = match catch_unwind(AssertUnwindSafe({
                             let req = req.as_mut();
-                            || self.router.handle(req.get_mut())
+                            || self.router.handle(self.ip, req.get_mut())
                         })) {
                             Ok(future) => future.await,
                             Err(panic) => panicking(panic),
                         };
-                        let upgrade = res.send(&mut self.connection).await;
+                        let upgrade = write(res, &mut self.connection).await;
 
-                        if !upgrade.is_none() {break upgrade}
+                        if !(matches!(upgrade, Upgrade::None)) {break upgrade}
                         if close {break Upgrade::None}
                     }
                     Ok(None) => break Upgrade::None,
-                    Err(res) => {res.send(&mut self.connection).await;},
+                    Err(err) => {write(Response::of(err), &mut self.connection).await;},
                 }
             }
         }).await {

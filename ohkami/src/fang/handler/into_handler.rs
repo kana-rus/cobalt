@@ -32,7 +32,7 @@ const _: (/* no args */) = {
         Fut:  Future<Output = Body> + SendOnNative + 'static,
     {
         fn into_handler(self) -> Handler {
-            Handler::new(move |_| {
+            Handler::new(move |_, _| {
                 let res = self();
                 Box::pin(async move {
                     res.await.into_response()
@@ -50,8 +50,8 @@ const _: (/* FromParam */) = {
         Fut:  Future<Output = Body> + SendOnNative + 'static,
     {
         fn into_handler(self) -> Handler {
-            Handler::new(move |req|
-                match P1::from_raw_param(unsafe {req.path.assume_one_param()}) {
+            Handler::new(move |ctx, _|
+                match P1::from_raw_param(unsafe {ctx.raw_params().assume_init_one()}) {
                     Ok(p1) => {
                         let res = self(p1);
                         Box::pin(async move {res.await.into_response()})

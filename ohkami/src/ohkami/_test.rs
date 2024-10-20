@@ -86,11 +86,7 @@ fn my_ohkami() -> Ohkami {
     let head_res = t.oneshot(req).await;
     assert_eq!(head_res.text(), None);
 
-    assert_eq!(
-        get_res.
-        // {let mut h = get_res.headers().filter(|(name, _)| *name != "Content-Length").collect::<Vec<_>>(); h.sort(); h},
-        // {let mut h = head_res.headers().collect::<Vec<_>>(); h.sort(); h}
-    );
+    assert_eq!(get_res.headers(), head_res.headers());
 
     /* GET /api/profiles/:username */
 
@@ -101,10 +97,7 @@ fn my_ohkami() -> Ohkami {
     let req = Request::HEAD("/api/profiles");
     let head_res = t.oneshot(req).await;
     assert_eq!(head_res.text(), None);
-    assert_eq!(
-        {let mut h = get_res.headers().filter(|(name, _)| *name != "Content-Length").collect::<Vec<_>>(); h.sort(); h},
-        {let mut h = head_res.headers().collect::<Vec<_>>(); h.sort(); h}
-    );
+    assert_eq!(get_res.headers(), head_res.headers());
 
     let req = Request::GET("/api/profiles/123");
     let get_res = t.oneshot(req).await;
@@ -113,10 +106,7 @@ fn my_ohkami() -> Ohkami {
     let req = Request::HEAD("/api/profiles/123");
     let head_res = t.oneshot(req).await;
     assert_eq!(head_res.text(), None);
-    assert_eq!(
-        {let mut h = get_res.headers().filter(|(name, _)| *name != "Content-Length").collect::<Vec<_>>(); h.sort(); h},
-        {let mut h = head_res.headers().collect::<Vec<_>>(); h.sort(); h}
-    );
+    assert_eq!(get_res.headers(), head_res.headers());
 
 
     /* POST,DELETE /api/profiles/:username/follow */
@@ -169,7 +159,7 @@ fn my_ohkami() -> Ohkami {
 
 #[crate::__rt__::test] async fn test_fang_registration() {
     use std::sync::{OnceLock, Mutex};
-    use crate::{Fang, FangProc};
+    use crate::{Fang, FangProc, Context};
 
     fn N() -> &'static Mutex<usize> {
         static N: OnceLock<Mutex<usize>> = OnceLock::new();
@@ -185,12 +175,12 @@ fn my_ohkami() -> Ohkami {
     }
     struct IncrementProc<Inner: FangProc>(Inner);
     impl<Inner: FangProc> FangProc for IncrementProc<Inner> {
-        fn bite<'b>(&'b self, req: &'b mut Request) -> impl std::future::Future<Output = Response> + Send {
+        fn bite<'b>(&'b self, ctx: Context<'b>, req: &'b mut Request) -> impl std::future::Future<Output = Response> + Send {
             #[cfg(feature="DEBUG")]
             println!("Called `Increment`");
 
             *N().lock().unwrap() += 1;
-            self.0.bite(req)
+            self.0.bite(ctx, req)
         }
     }
 
@@ -248,7 +238,7 @@ fn my_ohkami() -> Ohkami {
 
 #[__rt__::test] async fn test_fangs_nesting() {
     use std::sync::{Mutex, OnceLock};
-    use crate::{Fang, FangProc, Ohkami};
+    use crate::{Fang, FangProc, Context, Ohkami};
 
     #[allow(non_snake_case)]
     fn MESSAGES() -> &'static Mutex<Vec<String>> {
@@ -271,12 +261,12 @@ fn my_ohkami() -> Ohkami {
         inner: I,
     }
     impl<I: FangProc> FangProc for HelloFangProc<I> {
-        async fn bite<'b>(&'b self, req: &'b mut Request) -> Response {
+        async fn bite<'b>(&'b self, ctx: Context<'b>, req: &'b mut Request) -> Response {
             {
                 let mut lock = MESSAGES().lock().unwrap();
                 lock.push(format!("Hello, {}!", self.name));
             }
-            let res = self.inner.bite(req).await;
+            let res = self.inner.bite(ctx, req).await;
             {
                 let mut lock = MESSAGES().lock().unwrap();
                 lock.push(format!("Bye, {}!", self.name));

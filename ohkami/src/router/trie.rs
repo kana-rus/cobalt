@@ -201,7 +201,7 @@ impl TrieRouter {
             )*};
         } register! { GET, PUT, POST, PATCH, DELETE }
 
-        self.OPTIONS.register_handler(route.into_iter(), Handler::new(move |req| {
+        self.OPTIONS.register_handler(route.into_iter(), Handler::new(move |_, req| {
             let mut available_methods = methods.clone();
             if available_methods.contains(&"GET") {
                 available_methods.push("HEAD")

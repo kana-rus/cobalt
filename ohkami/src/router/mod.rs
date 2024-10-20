@@ -146,13 +146,13 @@ const _: () = {
 
         #[inline]
         // SAFETY: `self` must have called `push` at least once
-        pub(crate) unsafe fn assume_init_one(self) -> &'req [u8] {
+        pub(crate) unsafe fn assume_init_one(&self) -> &'req [u8] {
             self.list.get_unchecked(0).assume_init_ref()
         }
 
         #[inline]
         // SAFETY: `self` must have called `push` twice
-        pub(crate) unsafe fn assume_init_two(self) -> (&'req [u8], &'req [u8]) {
+        pub(crate) unsafe fn assume_init_two(&self) -> (&'req [u8], &'req [u8]) {
             (
                 self.list.get_unchecked(0).assume_init_ref(),
                 self.list.get_unchecked(1).assume_init_ref()

@@ -260,7 +260,7 @@ trait RoutingItem {
                         let this: &'static StaticFileHandler
                             = Box::leak(Box::new(self));
 
-                        Handler::new(|_| Box::pin(async {
+                        Handler::new(|_, _| Box::pin(async {
                             whttp::Response::OK()
                                 .with_payload(this.mime, &*this.content)
                         }))

@@ -59,6 +59,23 @@ pub(super) enum Pattern {
 
 /*===== impls =====*/
 
+#[inline(always)]
+fn complete(mut res: Response) -> Response {
+    use whttp::{Status, header::{Date, ContentLength}};
+
+    res.set(Date, ohkami_lib::imf_fixdate(
+        std::time::Duration::from_secs(
+            crate::util::unix_timestamp()
+        )
+    ));
+
+    if res.body() == None && res.status() != Status::NoContent {
+        res.set(ContentLength, "0");
+    }
+
+    res
+}
+
 impl RadixRouter {
     #[inline(always)]
     pub(crate) async fn handle(
@@ -66,19 +83,21 @@ impl RadixRouter {
         ip:  std::net::IpAddr,
         req: &mut Request,
     ) -> Response {
-        let path = unsafe {// と思ったけど req.set_path あるやん...
-            let path = req.path();
-            std::str::from_raw_parts(path.as_ptr(), path.len())
-        };
+        // show `path` as with extended lifetime to compiler
+        // 
+        // SAFETY:
+        // * `search` only requires `path` to live for the same lifetime as `req`
+        // * `path` of `Request` is immutable
+        let path = unsafe {std::mem::transmute(req.raw_path())};
 
         let mut params = PathParams::new();
 
         let fpc = (match req.method() {
             Method::CONNECT => return Response::NotImplemented(),
             Method::HEAD    => return {
-                let fpc = self.GET.search(req.path(), &mut params);
+                let fpc = self.GET.search(path, &mut params);
                 let ctx = Context::new(ip, params);
-                fpc.call_bite(ctx, req).await.into_head()
+                complete(fpc.call_bite(ctx, req).await)
             },
             Method::GET     => &self.GET,
             Method::PUT     => &self.PUT,
@@ -86,9 +105,9 @@ impl RadixRouter {
             Method::PATCH   => &self.PATCH,
             Method::DELETE  => &self.DELETE,
             Method::OPTIONS => &self.OPTIONS,
-        }).search(req.path(), &mut params);
+        }).search(path, &mut params);
         let ctx = Context::new(ip, params);
-        fpc.call_bite(ctx, req).await
+        complete(fpc.call_bite(ctx, req).await)
     }
 }
 

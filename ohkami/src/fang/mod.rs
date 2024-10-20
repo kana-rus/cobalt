@@ -93,6 +93,9 @@ impl<'req> Context<'req> {
     pub(crate) const fn new(ip: std::net::IpAddr, params: PathParams<'req>) -> Self {
         Self { ip, params }
     }
+    pub(crate) const fn raw_params(&self) -> &PathParams<'req> {
+        &self.params
+    }
 
     pub const fn ip(&self) -> &std::net::IpAddr {
         &self.ip
