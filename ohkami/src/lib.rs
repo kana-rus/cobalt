@@ -46,7 +46,7 @@
 #[cfg(all(feature="rt_worker", not(target_arch="wasm32")))]
 compile_error! {"
     `rt_worker` must be activated on `wasm32` target!
-    (We recommend to touch `.cargo/config.toml`: `[build] target = \"wasm32-unknown-unknown\"`)
+    (touch `.cargo/config.toml`: `[build] target = \"wasm32-unknown-unknown\"`)
 "}
 
 

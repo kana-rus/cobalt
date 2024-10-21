@@ -18,15 +18,16 @@ features      = ["rt_tokio", "nightly", "sse", "ws"]
 
 
 [dependencies]
+ohkami_rt     = { version = "=0.1.0", path = "../ohkami_rt", optional = true }
 ohkami_lib    = { version = "=0.2.6", path = "../ohkami_lib" }
 ohkami_macros = { version = "=0.8.0", path = "../ohkami_macros" }
 
 whttp         = { git = "https://github.com/ohkami-rs/whttp" }
 
-tokio         = { version = "1",   optional = true, features = ["rt", "net", "time"] }
-async-std     = { version = "1",   optional = true }
-smol          = { version = "2",   optional = true }
-glommio       = { version = "0.9", optional = true }
+# tokio         = { version = "1",   optional = true, features = ["rt", "net", "time"] }
+# async-std     = { version = "1",   optional = true }
+# smol          = { version = "2",   optional = true }
+# glommio       = { version = "0.9", optional = true }
 worker        = { version = "0.4", optional = true }
 
 byte_reader   = { workspace = true }
@@ -42,14 +43,16 @@ sha1          = { version = "0.10", optional = true, default-features = false }
 num_cpus      = { version = "1.16", optional = true }
 futures-util  = { version = "0.3",  optional = true, default-features = false, features = ["io", "async-await-macro"] }
 
+# tokio         = { optional = , version = "" }
+
 
 [features]
 # default       = ["testing"]
 
-rt_tokio      = ["__rt__", "__rt_native__", "dep:tokio",     "tokio/io-util", "tokio/macros",    "ohkami_lib/signal"]
-rt_async-std  = ["__rt__", "__rt_native__", "dep:async-std", "dep:futures-util",                 "ohkami_lib/signal"]
-rt_smol       = ["__rt__", "__rt_native__", "dep:smol",      "dep:futures-util",                 "ohkami_lib/signal"]
-rt_glommio    = ["__rt__", "__rt_native__", "dep:glommio",   "dep:futures-util", "dep:num_cpus", "ohkami_lib/signal"]
+rt_tokio      = ["__rt__", "__rt_native__", "dep:ohkami_rt", "ohkami_rt/tokio",    "ohkami_lib/signal"]
+rt_async-std  = ["__rt__", "__rt_native__", "dep:ohkami_rt", "ohkami_rt/async-std", "dep:futures-util",                 "ohkami_lib/signal"]
+rt_smol       = ["__rt__", "__rt_native__", "dep:ohkami_rt", "ohkami_rt/smol",      "dep:futures-util",                 "ohkami_lib/signal"]
+rt_glommio    = ["__rt__", "__rt_native__", "dep:ohkami_rt", "ohkami_rt/glommio",   "dep:futures-util", "dep:num_cpus", "ohkami_lib/signal"]
 rt_worker     = ["__rt__", "dep:worker", "ohkami_macros/worker"]
 
 nightly       = []
@@ -63,8 +66,8 @@ __rt_native__ = []
 
 ##### DEBUG #####
 DEBUG = [
-    "tokio?/rt-multi-thread",
-    "async-std?/attributes",
+    # "tokio?/rt-multi-thread",
+    # "async-std?/attributes",
 ]
 default = [
     "nightly",
@@ -78,3 +81,6 @@ default = [
     #"rt_worker",
     "DEBUG",
 ]
+
+[dev-dependencies]
+tokio = { version = "1", features = ["full"] }

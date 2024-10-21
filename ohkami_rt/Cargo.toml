@@ -1,0 +1,27 @@
+[package]
+name          = "ohkami_rt"
+version       = "0.1.0"
+edition       = "2021"
+authors       = ["kanarus <kanarus786@gmail.com>"]
+description   = "runtime abstraction layer for Ohkami - intuitive and declarative web framework"
+documentation = "https://docs.rs/ohkami"
+homepage      = "https://crates.io/crates/ohkami"
+repository    = "https://github.com/ohkami-rs/ohkami"
+readme        = "../README.md"
+keywords      = ["async", "http", "web", "server", "framework"]
+categories    = ["asynchronous", "web-programming::http-server", "network-programming", "wasm"]
+license       = "MIT"
+
+[dependencies]
+tokio         = { version = "1",   optional = true, features = ["rt", "net", "time", "io-util"] }
+async-std     = { version = "1",   optional = true }
+smol          = { version = "2",   optional = true }
+glommio       = { version = "0.9", optional = true }
+
+futures-util  = { version = "0.3",  optional = true, default-features = false, features = ["io"] }
+
+[features]
+tokio      = ["dep:tokio"]
+async-std  = ["dep:async-std", "dep:futures-util"]
+smol       = ["dep:smol",      "dep:futures-util"]
+glommio    = ["dep:glommio",   "dep:futures-util"]

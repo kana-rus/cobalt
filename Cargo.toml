@@ -2,6 +2,7 @@
 resolver = "2"
 members  = [
     "ohkami",
+    "ohkami_rt",
     "ohkami_lib",
     "ohkami_macros",
 ]
@@ -14,5 +15,5 @@ exclude  = [
 ]
 
 [workspace.dependencies]
-byte_reader   = { version = "3.1", features = ["text"] }
-serde         = { version = "1.0", features = ["derive"] }
+byte_reader = { version = "3.1", features = ["text"] }
+serde       = { version = "1.0", features = ["derive"] }
