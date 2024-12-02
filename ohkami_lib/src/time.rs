@@ -5,9 +5,14 @@
 /// 
 /// (reference：[https://datatracker.ietf.org/doc/html/rfc9110#name-date-time-formats](https://datatracker.ietf.org/doc/html/rfc9110#name-date-time-formats))
 #[inline(always)] pub fn imf_fixdate(unix_timestamp: u64) -> String {
-    UTCDateTime::from_unix_timestamp(unix_timestamp).into_imf_fixdate()
+    // SAFETY: into_imf_fixdate() always generates valid UTF-8 bytes
+    unsafe {String::from_utf8_unchecked(Vec::from(
+        UTCDateTime::from_unix_timestamp(unix_timestamp).into_imf_fixdate()
+    ))}
 }
 
+pub const IMF_FIXDATE_LEN: usize = str::len("Sun, 06 Nov 1994 08:49:37 GMT");
+        
 /// date time on UTC *to the second*
 pub struct UTCDateTime {
     date: Date,
@@ -27,12 +32,10 @@ impl UTCDateTime {
         Self { date, time }
     }
 
-    pub fn into_imf_fixdate(self) -> String {
+    pub fn into_imf_fixdate(self) -> [u8; IMF_FIXDATE_LEN] {
         const SHORT_WEEKDAYS: [&[u8; 3]; 7 ] = [b"Sun", b"Mon", b"Tue", b"Wed", b"Thu", b"Fri", b"Sat"];
         const SHORT_MONTHS:   [&[u8; 3]; 12] = [b"Jan", b"Feb", b"Mar", b"Apr", b"May", b"Jun", b"Jul", b"Aug", b"Sep", b"Oct", b"Nov", b"Dec"];
 
-        const IMF_FIXDATE_LEN: usize = str::len("Sun, 06 Nov 1994 08:49:37 GMT");
-        
         let mut buf = [std::mem::MaybeUninit::<u8>::uninit(); IMF_FIXDATE_LEN];
         let mut i = 0;
 
@@ -88,15 +91,12 @@ impl UTCDateTime {
         }
 
         unsafe {
-            // SAFETY: Here `buf` is obviously valid UTF-8 byte array
-            String::from_utf8_unchecked(Vec::from(
-                // SAFETY:
-                // * The caller guarantees that all elements of the array are initialized
-                // * `MaybeUninit<T>` and T are guaranteed to have the same layout
-                // * `MaybeUninit` does not drop, so there are no double-frees
-                // And thus the conversion is safe
-                std::mem::transmute::<_, [u8; IMF_FIXDATE_LEN]>(buf)
-            ))
+            // SAFETY:
+            // * The caller guarantees that all elements of the array are initialized
+            // * `MaybeUninit<T>` and T are guaranteed to have the same layout
+            // * `MaybeUninit` does not drop, so there are no double-frees
+            // And thus the conversion is safe
+            std::mem::transmute::<_, [u8; IMF_FIXDATE_LEN]>(buf)
         }
     }
 }

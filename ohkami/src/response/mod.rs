@@ -1,8 +1,10 @@
+
 mod status;
 pub use status::Status;
 
 mod headers;
 pub use headers::{Headers as ResponseHeaders, SetHeaders};
+
 #[cfg(feature="DEBUG")]
 pub use headers::Header as ResponseHeader;
 
@@ -11,6 +13,8 @@ pub use content::Content;
 
 mod into_response;
 pub use into_response::IntoResponse;
+
+#[cfg(feature="__rt__")] mod cache;
 
 #[cfg(test)] mod _test;
 #[cfg(test)] mod _test_headers;
@@ -127,7 +131,10 @@ impl Response {
     /// Complete HTTP spec
     #[inline(always)]
     pub(crate) fn complete(&mut self) {
-        self.headers.set().Date(::ohkami_lib::imf_fixdate(crate::util::unix_timestamp()));
+        self.headers.set().Date(
+            // SAFETY: This value is immediately used in sending process and disposed
+            unsafe {self::cache::imf_fixdate_now()}
+        );
 
         match &self.content {
             Content::None => {
