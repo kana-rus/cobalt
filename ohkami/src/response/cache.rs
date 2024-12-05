@@ -32,12 +32,12 @@ pub unsafe fn imf_fixdate_now() -> &'static str {
         unsafe {**NOW.as_ptr() = UTCDateTime::from_unix_timestamp(unix_timestamp()).into_imf_fixdate()}        
         std::thread::spawn(|| loop {std::thread::sleep(Duration::from_millis(500));
             crate::DEBUG!("NOW: {}", std::str::from_utf8(&**NOW.as_ptr()).unwrap());
-            let next = if (*NOW.as_ptr()) == A {B} else {A};
+            let next = if NOW.load(Ordering::Acquire) == A {B} else {A};
             unsafe {*next = UTCDateTime::from_unix_timestamp(unix_timestamp()).into_imf_fixdate()};
             NOW.store(next, Ordering::Release);
         });
     });
     
     // SAFETY: into_imf_fixdate() always generates valid UTF-8 bytes
-    unsafe {std::str::from_utf8_unchecked(&*NOW.load(Ordering::Acquire))}
+    unsafe {std::str::from_utf8_unchecked(&*NOW.load(Ordering::Relaxed))}
 }
