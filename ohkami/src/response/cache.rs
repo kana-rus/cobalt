@@ -38,6 +38,8 @@ pub unsafe fn imf_fixdate_now() -> &'static str {
         });
     });
     
-    // SAFETY: into_imf_fixdate() always generates valid UTF-8 bytes
-    unsafe {std::str::from_utf8_unchecked(&*NOW.load(Ordering::Relaxed))}
+    // SAFETY:
+    // 1. `NOW` always points fully-written byte array
+    // 2. into_imf_fixdate() always generates valid UTF-8 bytes
+    unsafe {std::str::from_utf8_unchecked(&**NOW.as_ptr())}
 }
