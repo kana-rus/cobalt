@@ -29,17 +29,21 @@ pub unsafe fn imf_fixdate_now() -> &'static str {
 
     static INIT: Once = Once::new();
     INIT.call_once(|| {
-        unsafe {**NOW.as_ptr() = UTCDateTime::from_unix_timestamp(unix_timestamp()).into_imf_fixdate()}        
-        std::thread::spawn(|| loop {std::thread::sleep(Duration::from_millis(500));
+        **NOW.as_ptr() = UTCDateTime::from_unix_timestamp(unix_timestamp()).into_imf_fixdate();
+
+        std::thread::spawn(|| loop {
+            std::thread::sleep(Duration::from_millis(500));
+
             crate::DEBUG!("NOW: {}", std::str::from_utf8(&**NOW.as_ptr()).unwrap());
-            let next = if NOW.load(Ordering::Acquire) == A {B} else {A};
-            unsafe {*next = UTCDateTime::from_unix_timestamp(unix_timestamp()).into_imf_fixdate()};
-            NOW.store(next, Ordering::Release);
+
+            let next = if (*NOW.as_ptr()) == A {B} else {A};
+            *next = UTCDateTime::from_unix_timestamp(unix_timestamp()).into_imf_fixdate();
+            NOW.store(next, Ordering::Relaxed);
         });
     });
     
     // SAFETY:
-    // 1. `NOW` always points fully-written byte array
+    // 1. `NOW` always points fully-updated byte array
     // 2. into_imf_fixdate() always generates valid UTF-8 bytes
-    unsafe {std::str::from_utf8_unchecked(&**NOW.as_ptr())}
+    std::str::from_utf8_unchecked(&**NOW.as_ptr())
 }
