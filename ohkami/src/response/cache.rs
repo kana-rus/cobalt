@@ -38,7 +38,12 @@ pub unsafe fn imf_fixdate_now() -> &'static str {
 
             let next = if (*NOW.as_ptr()) == A {B} else {A};
             *next = UTCDateTime::from_unix_timestamp(unix_timestamp()).into_imf_fixdate();
-            NOW.store(next, Ordering::Relaxed);
+            // 1. When a read accesses `NOW` before this flip, it refers to the
+            //    **previous** bytes which is old, but complete, so acceptable
+            //    for this usage.
+            NOW.store(next, Ordering::Relaxed)/* atomic flip */;
+            // 2. When a read accesses `NOW` after this flip, it refers to the
+            //    **latest** bytes.
         });
     });
     
