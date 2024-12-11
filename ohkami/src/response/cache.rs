@@ -1,4 +1,4 @@
-#![cfg(feature="__rt__")]
+#![cfg(feature="__rt_native__")]
 
 use crate::util::unix_timestamp;
 use ohkami_lib::time::{UTCDateTime, IMF_FIXDATE_LEN};

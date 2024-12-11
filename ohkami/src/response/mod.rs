@@ -14,7 +14,7 @@ pub use content::Content;
 mod into_response;
 pub use into_response::IntoResponse;
 
-#[cfg(feature="__rt__")] mod cache;
+#[cfg(feature="__rt_native__")] mod cache;
 
 #[cfg(test)] mod _test;
 #[cfg(test)] mod _test_headers;
@@ -131,6 +131,7 @@ impl Response {
     /// Complete HTTP spec
     #[inline(always)]
     pub(crate) fn complete(&mut self) {
+        #[cfg(feature="__rt_native__")]
         self.headers.set().Date(
             // SAFETY: This value is immediately used in sending process and disposed
             unsafe {self::cache::imf_fixdate_now()}
